@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>무한 달리기 게임</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        #game-board {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #87CEEB;
+            overflow: hidden;
+        }
+
+        .player {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #FF6347;
+            bottom: 0;
+            left: 50px;
+            transition: bottom 0.1s ease-out;
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #000;
+            bottom: 0;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-board">
+        <div id="score-board">점수: 0</div>
+        <div class="player" id="player"></div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const player = document.getElementById('player');
+        const scoreBoard = document.getElementById('score-board');
+        let score = 0;
+        let playerBottom = 0;
+        let isJumping = false;
+        let isDoubleJumping = false;
+        let gravity = 0.6;
+        let obstacles = [];
+        let gameInterval;
+        let obstacleInterval;
+        let gameSpeed = 5;
+        let gameOver = false;
+
+        // 캐릭터 점프
+        function jump() {
+            if (!isJumping) {
+                isJumping = true;
+                isDoubleJumping = false; // 더블 점프 초기화
+                let jumpHeight = 15;
+                let jumpInterval = setInterval(() => {
+                    if (jumpHeight > 0) {
+                        playerBottom += jumpHeight;
+                        player.style.bottom = `${playerBottom}px`;
+                        jumpHeight -= gravity;
+                    } else {
+                        clearInterval(jumpInterval);
+                        fall();
+                    }
+                }, 20);
+            } else if (!isDoubleJumping) {
+                // 더블 점프 실행
+                isDoubleJumping = true;
+                let doubleJumpHeight = 15;
+                let doubleJumpInterval = setInterval(() => {
+                    if (doubleJumpHeight > 0) {
+                        playerBottom += doubleJumpHeight;
+                        player.style.bottom = `${playerBottom}px`;
+                        doubleJumpHeight -= gravity;
+                    } else {
+                        clearInterval(doubleJumpInterval);
+                        fall();
+                    }
+                }, 20);
+            }
+        }
+
+        // 캐릭터 낙하
+        function fall() {
+            let fallInterval = setInterval(() => {
+                if (playerBottom > 0) {
+                    playerBottom -= gravity * 3;
+                    player.style.bottom = `${playerBottom}px`;
+                } else {
+                    clearInterval(fallInterval);
+                    isJumping = false;
+                    isDoubleJumping = false;
+                }
+            }, 20);
+        }
+
+        // 장애물 생성
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.left = `${gameBoard.offsetWidth}px`;
+            gameBoard.appendChild(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        // 장애물 이동
+        function moveObstacles() {
+            obstacles.forEach((obstacle, index) => {
+                let obstaclePosX = parseFloat(window.getComputedStyle(obstacle).getPropertyValue('left'));
+                obstaclePosX -= gameSpeed;
+                obstacle.style.left = `${obstaclePosX}px`;
+
+                // 장애물이 화면을 벗어나면 제거
+                if (obstaclePosX < -50) {
+                    obstacle.remove();
+                    obstacles.splice(index, 1);
+                    score++;
+                    scoreBoard.textContent = `점수: ${score}`;
+                }
+
+                // 충돌 감지
+                if (isCollision(player, obstacle)) {
+                    endGame();
+                }
+            });
+        }
+
+        // 충돌 감지 함수
+        function isCollision(player, obstacle) {
+            const playerRect = player.getBoundingClientRect();
+            const obstacleRect = obstacle.getBoundingClientRect();
+
+            return !(
+                playerRect.bottom < obstacleRect.top ||
+                playerRect.top > obstacleRect.bottom ||
+                playerRect.right < obstacleRect.left ||
+                playerRect.left > obstacleRect.right
+            );
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            if (!gameOver) {
+                moveObstacles();
+            }
+        }
+
+        // 게임 종료
+        function endGame() {
+            clearInterval(gameInterval);
+            clearInterval(obstacleInterval);
+            gameOver = true;
+            alert(`게임 오버! 최종 점수: ${score}`);
+            obstacles.forEach(obstacle => obstacle.remove());
+            obstacles = [];
+            score = 0;
+            scoreBoard.textContent = `점수: ${score}`;
+            gameSpeed = 5;
+        }
+
+        // 게임 시작
+        function startGame() {
+            gameOver = false;
+            gameInterval = setInterval(gameLoop, 20);
+            obstacleInterval = setInterval(createObstacle, 2000);
+
+            // 게임 속도 증가
+            setInterval(() => {
+                if (!gameOver) {
+                    gameSpeed += 0.5;
+                }
+            }, 5000);
+        }
+
+        // 화면 터치 및 더블 클릭 시 캐릭터 점프
+        gameBoard.addEventListener('touchstart', () => {
+            if (!gameOver) {
+                jump();
+            }
+        });
+
+        gameBoard.addEventListener('dblclick', () => {
+            if (!gameOver) {
+                jump();
+            }
+        });
+
+        // 게임 시작
+        startGame();
+    </script>
+
+</body>
+</html>
